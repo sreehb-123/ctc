@@ -1,24 +1,23 @@
 #!/bin/bash
-
 set -e
 
-echo "==> Installing ctc..."
+REPO="sreehb-123/ctc"
+BRANCH="main"
+RAW="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 
-# Ask for sudo upfront
+echo "==> Installing ctc..."
 echo "This installer may require administrator privileges."
 sudo -v
 
-# Keep sudo alive while script runs
-while true; do sudo -n true; sleep 100; kill -0 "$$" || exit; done 2>/dev/null &
+# Keep sudo alive
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
 # Check for wl-clipboard
 if ! command -v wl-copy >/dev/null 2>&1; then
     echo ""
     echo "wl-clipboard is required but not installed."
     read -p "Install wl-clipboard now? [Y/n]: " choice
-
     choice=${choice:-Y}
-
     if [[ "$choice" =~ ^[Yy]$ ]]; then
         echo "Installing wl-clipboard..."
         sudo apt update
@@ -29,16 +28,24 @@ if ! command -v wl-copy >/dev/null 2>&1; then
     fi
 fi
 
-# Install ctc script
+# Download files to a temp directory
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+echo "Downloading ctc..."
+curl -fsSL "${RAW}/ctc" -o "${TMP}/ctc"
+curl -fsSL "${RAW}/ctc.1.gz" -o "${TMP}/ctc.1.gz"
+
+# Install binary
 echo "Installing binary..."
-sudo install -m 755 ctc /usr/local/bin/ctc
+sudo install -m 755 "${TMP}/ctc" /usr/local/bin/ctc
 
 # Install man page
 echo "Installing man page..."
 sudo mkdir -p /usr/local/share/man/man1
-sudo install -m 644 ctc.1.gz /usr/local/share/man/man1/
+sudo install -m 644 "${TMP}/ctc.1.gz" /usr/local/share/man/man1/
 
-# Update man database (quietly)
+# Update man database
 sudo mandb >/dev/null 2>&1 || true
 
 echo ""
