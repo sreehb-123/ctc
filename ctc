@@ -1,0 +1,76 @@
+#!/bin/bash
+
+show_help() {
+cat <<EOF
+ctc - Clipboard ↔ File Utility
+
+Usage:
+  ctc <file>              Copy file contents to clipboard
+  ctc -r <file>           Replace file with clipboard contents
+  ctc -r -a <file>        Append clipboard contents to file
+  ctc -r -p <file>        Create file if missing, then write
+  ctc -h, --help          Show this help message
+
+Options:
+  -r    Write clipboard to file (replace mode)
+  -a    Append clipboard to file (requires -r)
+  -p    Create file if missing (requires -r)
+  -h or
+  --help Display help
+EOF
+}
+
+if [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+replace=false
+append=false
+create=false
+
+while getopts "raph" opt; do
+  case $opt in
+    r) replace=true ;;
+    a) append=true ;;
+    p) create=true ;;
+    h) show_help; exit 0 ;;
+    *) echo "Invalid option. Use -h or --help."; exit 1 ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+if [ $# -eq 0 ]; then
+    echo "Error: No file specified."
+    exit 1
+fi
+
+FILE="$1"
+
+if [ "$replace" = false ]; then
+    if [ ! -f "$FILE" ]; then
+        echo "Error: File not found!"
+        exit 1
+    fi
+    wl-copy < "$FILE"
+    echo "Copied contents of '$FILE' to clipboard"
+    exit 0
+fi
+
+if [ ! -f "$FILE" ]; then
+    if [ "$create" = true ]; then
+        touch "$FILE"
+    else
+        echo "Error: File does not exist (use -p to create)"
+        exit 1
+    fi
+fi
+
+if [ "$append" = true ]; then
+    wl-paste >> "$FILE"
+    echo "Appended clipboard contents to '$FILE'"
+else
+    wl-paste > "$FILE"
+    echo "Replaced contents of '$FILE' with clipboard"
+fi
